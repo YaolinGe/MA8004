@@ -2,7 +2,7 @@ print("hello world")
 import numpy as np
 import matplotlib.pyplot as plt
 # from skgstat import Variogram
-
+np.random.seed(8004)
 
 ## Functions used
 def Matern_cov(sigma, eta, t):
@@ -226,7 +226,8 @@ print(BETA_TRUE)
 print(theta)
 print(THETA_TRUE)
 
-plt.plot(Likelihood[:No_iter], 'k-')
+plt.plot(Likelihood[:No_iter], 'k')
+plt.title('maximum likelihood function ')
 plt.show()
 
 alpha = sum(-beta[0], beta[1:2]) / 3
