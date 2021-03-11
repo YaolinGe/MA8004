@@ -1,8 +1,13 @@
 print("hello world")
 import numpy as np
 import matplotlib.pyplot as plt
-# from skgstat import Variogram
-np.random.seed(8004)
+from random import sample
+
+from skgstat import Variogram
+np.random.seed(20210309)
+# np.random.seed(8004)
+# np.random.seed(20210309)
+# np.random.seed(20210309)
 
 ## Functions used
 def Matern_cov(sigma, eta, t):
@@ -31,14 +36,13 @@ def design_matrix(sites1v, sites2v):
     '''
     return np.hstack((np.ones([len(sites1v), 1]), sites1v, sites2v))
 
-def mu(H, alpha):
+def mu(H, beta):
     '''
-    :param sites1v: grid along east direction
-    :param sites2v: grid along north direction
+    :param H: design matrix
     :param beta: regression coef
     :return: prior mean
     '''
-    beta = np.hstack((-alpha, alpha, alpha))
+    # beta = np.hstack((-alpha, alpha, alpha))
     return np.dot(H, beta)
 
 def sampling_design(n, M):
@@ -48,7 +52,8 @@ def sampling_design(n, M):
     :return:
     '''
     F = np.zeros([M, n])
-    ind = np.random.randint(n, size = M)
+    # ind = np.random.randint(n, size = M)
+    ind = sample(range(n), M)
     for i in range(M):
         F[i, ind[i]] = True
     return F, ind
@@ -59,15 +64,21 @@ n1 = 25 # number of grid points along east direction
 n2 = 25 # number of grid points along north direction
 n = n1 * n2 # total number of grid points
 
-sites1 = np.arange(n1).reshape(-1, 1)
-sites2 = np.arange(n2).reshape(-1, 1)
+dn1 = 1/n1
+dn2 = 1/n2
+sites1 = np.arange(0, 1, dn1).reshape(-1, 1)
+sites2 = np.arange(0, 1, dn2).reshape(-1, 1)
 ww1 = np.ones([n1, 1])
 ww2 = np.ones([n2, 1])
-sites1 = sites1 * ww1.T
-sites2 = ww2 * sites2.T
+sites1m = sites1 * ww1.T # sites1m is the matrix version of sites1
+sites2m = ww2 * sites2.T
 
-sites1v = sites1.flatten().reshape(-1, 1)
-sites2v = sites2.flatten().reshape(-1, 1)
+sites1v = sites1m.flatten().reshape(-1, 1) # sites1v is the vectorised version
+sites2v = sites2m.flatten().reshape(-1, 1)
+
+# plt.figure(figsize=(5, 5))
+# plt.plot(sites1v, sites2v, 'k.')
+# plt.show()
 
 # Compute the distance matrix
 ddE = np.abs(sites1v * np.ones([1, n]) - np.ones([n, 1]) * sites1v.T)
@@ -80,12 +91,16 @@ plotf(t, "distance matrix")
 
 # Simulate the initial random field
 alpha = 1.0 # beta as in regression model
-sigma = 1.0 # scaling coef in matern kernel
-eta = .8 # range coef in matern kernel
+sigma = 0.25  # scaling coef in matern kernel
+eta = 9 # range coef in matern kernel
 # eta = 10 # range coef in matern kernel
-tau = .05 # iid noise
+tau = .0025 # iid noise
 
-BETA_TRUE = np.array([[-alpha], [alpha], [alpha]])
+beta1 = -2
+beta2 = 3
+beta3 = 1
+
+BETA_TRUE = np.array([[beta1], [beta2], [beta3]])
 THETA_TRUE = np.array([[sigma], [eta], [tau]])
 
 Sigma = Matern_cov(sigma, eta, t)  # matern covariance
@@ -93,12 +108,12 @@ Sigma = Matern_cov(sigma, eta, t)  # matern covariance
 plotf(Sigma, "matern cov")
 # plotf(C_theta, "C theta covariance")
 
-L = np.linalg.cholesky(Sigma)  # lower triangle matrix
+L = np.linalg.cholesky(Sigma)  # lower t    riangle matrix
 # L = np.linalg.cholesky(C_theta)  # lower triangle matrix
 
 x = np.dot(L, np.random.randn(n).reshape(-1, 1))
-H = design_matrix(sites1v, sites2v)
-mu_prior = mu(H, alpha).reshape(n, 1)
+H = design_matrix(sites1v, sites2v) # different notation for the project
+mu_prior = mu(H, BETA_TRUE).reshape(n, 1)
 plotf(np.copy(mu_prior).reshape(n1, n2), "prior mean")
 mu_real = mu_prior + x  # add covariance
 plotf(np.copy(mu_real).reshape(n1, n2), "realisation of grf")
@@ -109,25 +124,31 @@ F, ind = sampling_design(n, M)
 G = np.dot(F, H)
 y_sampled = np.dot(F, mu_real) + tau * np.random.randn(M).reshape(-1, 1)
 x_ind, y_ind = np.unravel_index(ind, (n1, n2))
-x_ind = x_ind.reshape(-1, 1)
-y_ind = y_ind.reshape(-1, 1)
+
+# print(ind)
+# print(x_ind)
+# print(y_ind)
+x_ind = sites1[x_ind]
+y_ind = sites2[y_ind]
 
 plt.figure()
-plt.scatter(x_ind, y_ind, y_sampled, facecolors='none', edgecolors='k')
+plt.scatter(x_ind, y_ind, 100 * abs(y_sampled), facecolors='none', edgecolors='k')
+# y_sampled times 10 for scaling in the plot
+# abs() added here to make the scatter plot work properly
 plt.title("random sample, circle size indicates true mean value")
 plt.show()
-
-
+#%%
 ##############################################
-# #%% Compute the variogram
+#%% Compute the variogram
 #
-# V_v = Variogram(coordinates = np.hstack((x_ind, y_ind)), values = y_sampled.squeeze())
-# V_v.plot(hist = False)
+V_v = Variogram(coordinates = np.hstack((x_ind, y_ind)), values = y_sampled.squeeze())
+V_v.plot(hist = False)
 #
-# print(V_v)
+print(V_v)
 ##############################################
 
 
+#%%
 def C_matrix(theta):
     '''
     :param theta:
@@ -170,9 +191,9 @@ def dC_dtau(theta):
 
 # Use fisher scoring to find MLE parameters
 # beta = np.zeros([3, 1])
-beta = np.array([[-.9], [1.1], [1.2]])
-theta = np.array([[.95], [.75], [.06]])
-MAX_ITER = 1000
+beta = np.array([[-2.1], [3.1], [.9]])
+theta = np.array([[.245], [9.3], [.003]])
+MAX_ITER = 5000
 No_iter = 0
 epsilon = 10
 Beta = np.zeros([MAX_ITER, 3])
@@ -181,13 +202,13 @@ Likelihood = np.zeros([MAX_ITER, 1])
 while No_iter < MAX_ITER and epsilon > .0001:
 
     C = C_matrix(theta)
-    # Q = np.linalg.inv(C)
     beta = np.linalg.solve(np.dot(G.T, np.linalg.solve(C, G)), np.dot(G.T, np.linalg.solve(C, y_sampled)))
     Beta[No_iter, ] = beta.T
     z = y_sampled - np.dot(G, beta)
-    Likelihood[No_iter, ] = -M/2 * np.log(2 * np.pi) -\
-                            1/2 * np.log(np.linalg.det(C)) -\
-                            1/2 * np.dot(z.T, np.linalg.solve(C, z))
+    lik = -M/2 * np.log(2 * np.pi) -\
+        [1/2 * np.log(np.linalg.det(C)) if np.linalg.det(C) != 0 else 0] - \
+        1/2 * np.dot(z.T, np.linalg.solve(C, z)) # otherwise, it becomes inf
+    Likelihood[No_iter, ] = lik if lik is not np.inf else 0
 
     # Find dC*/dtheta
     dC_dSgm = dC_dsimga(theta)
@@ -218,32 +239,43 @@ while No_iter < MAX_ITER and epsilon > .0001:
     theta_new = theta - np.linalg.solve(V, u)  # here it is minus, but in the book, it says plus, needs to be rechecked
     epsilon = np.linalg.norm(theta_new - theta, 2) / np.linalg.norm(beta, 2)
     theta = theta_new
-    print(epsilon)
+    print(epsilon , " , iter no is ", No_iter)
     No_iter += 1
 
-print(beta)
-print(BETA_TRUE)
-print(theta)
-print(THETA_TRUE)
+# print(beta)
+# print(BETA_TRUE)
+# print(theta)
+# print(THETA_TRUE)
 
 plt.plot(Likelihood[:No_iter], 'k')
 plt.title('maximum likelihood function ')
 plt.show()
 
-alphah = (sum(np.abs(beta)) / 3).squeeze()
+# alphah = (sum(np.abs(beta)) / 3).squeeze()
+thetah = theta
 sigmah = theta[0].squeeze()
 etah = theta[1].squeeze()
 tauh = theta[2].squeeze()
+betah = beta
+beta1 = beta[0].squeeze()
+beta2 = beta[1].squeeze()
+beta3 = beta[2].squeeze()
 
-print('Estimated sigma is ', sigmah, "\nEstimated eta is ", etah, \
-      "\nEstimated tau is ", tauh, "\nEstimated alpha is ", alphah)
+# print('Estimated sigma is ', sigmah, "\nEstimated eta is ", etah, \
+#       "\nEstimated tau is ", tauh, "\nEstimated alpha is ", alphah)
+print("\nEstimated sigma is ", np.round(sigmah, 3), "; True sigma is ", THETA_TRUE[0].squeeze(), \
+      "\nEstimated eta is ", np.round(etah,2), "; True eta is ", THETA_TRUE[1].squeeze(), \
+      "\nEstimated tau is ", np.round(tauh,5), "; True tau is ", THETA_TRUE[2].squeeze(), \
+      "\nEstimated beta1 is ", np.round(beta1, 2), "; True beta1 is ", BETA_TRUE[0].squeeze(), \
+      "\nEstimated beta2 is ", np.round(beta2, 2), "; True beta2 is ", BETA_TRUE[1].squeeze(), \
+      "\nEstimated beta3 is ", np.round(beta3, 2), "; True beta3 is ", BETA_TRUE[2].squeeze())
 
 
 #%% Kriging part
 Sigmah = Matern_cov(sigmah, etah, t) # estimated covariance matrix
-Lh = np.linalg.cholesky(Sigmah)
-mh = mu(H, alphah).reshape(-1, 1) + np.dot(Lh, np.random.randn(n).reshape(-1, 1))
-Ch = C_matrix(theta)
+Lh = np.linalg.cholesky(Sigmah) #h here refers to hat
+mh = mu(H, betah).reshape(-1, 1) + np.dot(Lh, np.random.randn(n).reshape(-1, 1))
+Ch = C_matrix(thetah)
 xp = mh + np.dot(Sigmah, np.dot(F.T, np.linalg.solve(C, (y_sampled - np.dot(F, mh)))))
 plotf(xp.reshape(n1, n2), "posterior mean")
 Sigmap = Sigmah - np.dot(Sigmah, np.dot(F.T, np.linalg.solve(Ch, np.dot(F, Sigmah))))
