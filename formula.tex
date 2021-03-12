@@ -1,0 +1,137 @@
+%--------------------
+% Packages
+% -------------------
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+%\usepackage{gentium}
+\usepackage{mathptmx} % Use Times Font
+\usepackage{amsmath}
+\usepackage{bm}
+
+\usepackage[pdftex]{graphicx} % Required for including pictures
+\usepackage[swedish]{babel} % Swedish translations
+\usepackage[pdftex,linkcolor=black,pdfborder={0 0 0}]{hyperref} % Format links for pdf
+\usepackage{calc} % To reset the counter in the document after title page
+\usepackage{enumitem} % Includes lists
+
+\frenchspacing % No double spacing between sentences
+\linespread{1.2} % Set linespace
+\usepackage[a4paper, lmargin=0.1666\paperwidth, rmargin=0.1666\paperwidth, tmargin=0.1111\paperheight, bmargin=0.1111\paperheight]{geometry} %margins
+%\usepackage{parskip}
+
+\usepackage[all]{nowidow} % Tries to remove widows
+\usepackage[protrusion=true,expansion=true]{microtype} % Improves typography, load after fontpackage is selected
+
+\usepackage{lipsum} % Used for inserting dummy 'Lorem ipsum' text into the template
+
+
+%-----------------------
+% Set pdf information and add title, fill in the fields
+%-----------------------
+\hypersetup{ 	
+pdfsubject = {},
+pdftitle = {},
+pdfauthor = {}
+}
+
+%-----------------------
+% Begin document
+%-----------------------
+\begin{document} %All text i dokumentet hamnar mellan dessa taggar, allt ovanför är formatering av dokumentet
+
+\section*{VOI formula in Gaussian case}
+
+For a Gaussian variable $\mathbf{w}$ with mean $\mathbf{m}$ and variance $\mathbf{r^2}$:
+
+\begin{equation*}
+    \begin{split}
+	PoV(x) &= \mathop{E}\left(max\{0, w\}\right) \\
+            & = \int{max\{0, w\}p(w)dw} \\
+            & = \int_0^{\infty}{wp(w)dw} \\
+            & = \int_{-\frac{m}{r}}^{\infty} (m + rz)\phi(z)dz \\
+            & = m\int_{-\frac{m}{r}}^{\infty}\phi(z)dz + r\int_{-\frac{m}{r}}^{\infty}z\phi(z)dz\\
+            & = m(1 - \Phi(-\frac{m}{r})) + r\phi(-\frac{m}{r})\\
+            & = m\Phi{m}{r} + r\phi{m}{r}
+    \end{split}
+\end{equation*}
+
+Since here it uses another standard Gaussian variable $z$ to transform the given $w$. Therefore, according to standard Gaussian, 
+
+\begin{equation*}
+	\begin{split}
+		\Phi(z) &= \int_{-\infty}^{z} \frac{1}{\sqrt{2\pi}}\exp^{-\frac{x^2}{2}}dx \\
+		\phi(z) & = \frac{1}{\sqrt{2\pi}}\exp^{-\frac{x^2}{2}}
+	\end{split}
+\end{equation*}
+Additonal notes to understand the second part of the equation
+
+\begin{equation*}
+    \begin{split}
+	r\int_{-\frac{m}{r}}^{\infty} z\phi(z)dz &=\int_{-\frac{m}{r}}^{\infty} z\exp(-\frac{z^2}{2})dz\\
+	&= \left[-\frac{z}{z}\exp^{-\frac{z^2}{2}}\right]_{-\frac{m}{r}}^{\infty} - \int_{-\frac{m}{r}}^{\infty} \exp^{-\frac{z^2}{2}}(-z)dz\\
+	&= \left[-\frac{z}{z}\exp^{-\frac{z^2}{2}}\right]_{-\frac{m}{r}}^{\infty} - \int_{-\frac{m}{r}}^{\infty} \exp^{-\frac{z^2}{2}}d(-\frac{z^2}{2})\\
+	&= \left[-\frac{z}{z}\exp^{-\frac{z^2}{2}}\right]_{-\frac{m}{r}}^{\infty} - \left[\exp^{-\frac{z^2}{2}}\right]_{-\frac{m}{r}}^{\infty}\\
+    \end{split}
+\end{equation*}
+
+\begin{equation*}
+    \begin{split}
+	r\int_{-\frac{m}{r}}^{\infty} z\phi(z)dz &=\int_{-\frac{m}{r}}^{\infty} z\exp(-\frac{z^2}{2})dz\\
+	&=-\int_{-\frac{m}{r}}^{\infty}\exp(-\frac{z^2}{2})d(-\frac{z^2}{2})\\
+	&= \left[\exp^{-\frac{z^2}{2}}\right]_{-\frac{m}{r}}^{\infty}\\
+    \end{split}
+\end{equation*}
+
+
+
+\section*{VOI for gaussian perfect information}
+Prior model for profits: 
+\begin{equation}
+	p(x) = \mathop{N}(0, \Sigma), \ \Sigma = 
+	\begin{pmatrix}
+	1 & \rho\\
+	\rho & 1
+	\end{pmatrix}
+\end{equation}
+
+Now, assume we know perfect infomormation about 1 project, thus it becomes:
+\begin{equation}
+	\begin{split}
+	y &= x_1 \\
+	p(x_1) &= \mathop{N}(0, 1)\\
+	\mathop{E}(x_1) &= x_1 \\
+	\mathop{E}(x_2|x_1) &= \mathop{E}(x_1) + \Sigma_{x_2x_1}\Sigma_{x_2}^{-1}(x_1 - \mathop{E}(x_1)) = 0 + \rho\cdot1\cdot(1-0)=\rho x_1\\
+	\mathop{Var}(x_1) &=0\\
+	\mathop{Var}(x_2|x_1) &= \Sigma_{x_2} - \Sigma_{x_2x_1}\Sigma_{x_2}^{-1}\Sigma_{x_1x_2} = 1 - \rho\cdot 1\cdot \rho = 1 - \rho^2\\
+	\end{split}
+\end{equation}
+
+
+\subsection{Imperfect information}
+As for imperfect information, measurement error $\tau^2$ feed into the system by adding additional variance, therefore, it becomes:
+\begin{equation}
+	\begin{split}
+		y &= x + \mathop{N}(0, \tau^2 \bm{I})\\
+		p(y) &= \mathop{N}(\bm{0}, \tau^2\bm{I} + \Sigma) = \mathop{N}(\bm{0}, \bm{C})\\
+		\mathop{E}(x|y)&=\Sigma\bm{C}^{-1}\bm{y}\\
+		PoV &= \mathop{E}\{max\{\mathop{E}(x_i|y), 0\}\}=\mathop{E}(max(u_i, 0))\\
+		u &= \Sigma\bm{C}^{-1}y\sim\mathop{N}(0, \Sigma\bm{C}^{-1}\bm{C}\bm{C}^{-1}\Sigma)\sim\mathop{N}(0, \Sigma\bm{C}^{-1}\Sigma)\\
+		\bm{S}&= 
+		\begin{pmatrix}
+		S_{1, 1} & S_{1, 2}\\
+		S_{2, 1} & S_{2, 2}\\
+		\end{pmatrix}\\
+		u_1&\sim\mathop{N}(0, S_{11})\\
+		u_1&\sim\mathop{N}(0, S_{22})\\
+		PoV(y) &= \Sigma_{i = 1}^{n}(\mu_i)\Phi(\frac{\mu_i}{\sqrt{r_{ii}}}) + \sqrt{r_{ii}}\phi(\frac{mu_i}{\sqrt{r_{ii}}}) = 0 + r\phi(0) = 0 + S_{ii}/\sqrt{2\pi} = \frac{\sqrt{S_{11}}+ \sqrt{S_{22}}}{\sqrt{2\pi}}
+	\end{split}
+\end{equation}
+%\int_{-\frac{m}{r}}^{\infty}
+
+\end{document}
+
+
+
+
+
