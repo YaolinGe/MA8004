@@ -35,7 +35,7 @@ def plotf(Y, string):
     plt.title(string)
     plt.colorbar(fraction=0.045, pad=0.04)
     plt.gca().invert_yaxis()
-    plt.show()
+    # plt.show()
     plt.savefig("fig/"+string+".png")
 
 
@@ -116,6 +116,70 @@ def MVR_sampling(mu_prior, Sigma_prior, tau, M, n1, n2, n):
         vr[j] = np.mean(np.diag(Sigma_posterior))
     mvr_ind = np.argmin(vr)
     return mvr_ind, vr
+
+
+def PoV(mu_posterior, Sigma_posterior, T, F):
+    '''
+    :param mu_posterior:
+    :param Sigma_posterior:
+    :param T:
+    :param F:
+    :return:
+    '''
+    mu_w = np.sum(mu_posterior)
+    Cmatrix = np.dot(F, np.dot(Sigma_posterior, F.T)) + T
+    Rj = np.dot(Sigma_posterior, np.dot(F.T, np.linalg.solve(Cmatrix, np.dot(F, Sigma_posterior))))
+    r_wj = np.sqrt(np.sum(Rj))
+    PoV = mu_w * norm.cdf(mu_w / r_wj) + r_wj * norm.pdf(mu_w / r_wj)
+    return PoV
+
+
+def PV(mu_posterior):
+    '''
+    :param mu_posterior:
+    :return:
+    '''
+    return max(0, np.sum(mu_posterior))
+
+
+def VOI(pov, pv):
+    '''
+    :param PoV:
+    :param PV:
+    :return:
+    '''
+    return pov - pv
+
+
+def VOI_sampling(Price, mu_prior, Sigma_prior, tau, M, n, n1, n2):
+    '''
+    :param mu_prior:
+    :param Sigma_prior:
+    :param tau:
+    :param M:
+    :param n:
+    :param n1:
+    :param n2:
+    :return:
+    '''
+    T = np.identity(M) * tau ** 2  # T matrix for the measurement error
+    voi = np.zeros([M, 1])
+    for j in range(n2):
+        F = np.zeros([M, n])
+        for i in range(M):
+            tempM = np.zeros([n1, n2])
+            tempM[i, j] = True
+            F[i, :] = np.ravel(tempM)
+
+        pov = PoV(mu_prior, Sigma_prior, T, F)
+        pv = PV(mu_prior)
+        voi[j] = VOI(pov, pv)
+
+    if np.max(voi) >= Price:
+        voi_ind = np.argmax(voi)
+    else:
+        voi_ind = -1
+    return voi_ind, voi
 
 
 ###################### other functions used for kriging and parameter estimation ##############################

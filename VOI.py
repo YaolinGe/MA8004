@@ -71,75 +71,109 @@ plotf(np.copy(mu_real).reshape(n1, n2), "Realisation of the Norwegian Woods")
 # Section II : Sampling with variance reduction
 ################################################################################################
 # design the sampling
-M = n1
-F = np.zeros([M, n])
-# j = 20
-mu_posterior = mu_real
-Sigma_posterior = Sigma
-T = np.identity(M) * tau ** 2  # T matrix for the measurement error
-
-No_steps = 10
-vr = np.zeros([No_steps, n2])
-
-for k in range(No_steps):
-    j_next, vr_temp = MVR_sampling(mu_posterior, Sigma_posterior, tau, M, n1, n2, n)
-    vr[k, :] = vr_temp.T
-    print("j next is ", j_next)
-    F = np.zeros([M, n])
-    for i in range(M):
-        tempM = np.zeros([n1, n2])
-        tempM[i, j_next] = True
-        F[i, :] = np.ravel(tempM)
-
-    y_sampled = np.dot(F, mu_posterior) + tau * np.random.randn(M).reshape(-1, 1)
-    mu_posterior, Sigma_posterior = GRF2D(Sigma_posterior, F, T, y_sampled, mu_posterior)
-
-    print(["posterior variance{:03d}".format(k)])
-    plotf(np.diag(Sigma_posterior).reshape(n1, n2), "posterior variance_{:03d}".format(k))
-    # plotf(mu_posterior.reshape(n1, n2), "posterior mean")
-    # plt.figure(figsize=(5, 5))
-    # plt.plot(vr_temp)
-    # plt.ylim(0, .5)
-    # plt.title("variance reduction at {:02d} iteration".format(k))
-    # # plt.show()
-    # plt.savefig("fig/vr_{:03d}".format(k) + ".png")
-
-plt.close("all")
+# M = n1
+# F = np.zeros([M, n])
+# # j = 20
+# mu_posterior = mu_prior
+# Sigma_posterior = Sigma
+# T = np.identity(M) * tau ** 2  # T matrix for the measurement error
+#
+# No_steps = 10
+# vr = np.zeros([No_steps, n2])
+#
+# for k in range(No_steps):
+#     j_next, vr_temp = MVR_sampling(mu_posterior, Sigma_posterior, tau, M, n1, n2, n)
+#     vr[k, :] = vr_temp.T
+#     print("j next is ", j_next)
+#     F = np.zeros([M, n])
+#     for i in range(M):
+#         tempM = np.zeros([n1, n2])
+#         tempM[i, j_next] = True
+#         F[i, :] = np.ravel(tempM)
+#
+#     y_sampled = np.dot(F, mu_posterior) + tau * np.random.randn(M).reshape(-1, 1)
+#     mu_posterior, Sigma_posterior = GRF2D(Sigma_posterior, F, T, y_sampled, mu_posterior)
+#
+#     print(["posterior variance{:03d}".format(k)])
+#     plotf(np.diag(Sigma_posterior).reshape(n1, n2), "std_mvr_{:03d}".format(k))
+#     # plotf(mu_posterior.reshape(n1, n2), "posterior mean")
+#     # plt.figure(figsize=(5, 5))
+#     # plt.plot(vr_temp)
+#     # plt.ylim(0, .5)
+#     # plt.title("variance reduction at {:02d} iteration".format(k))
+#     # # plt.show()
+#     # plt.savefig("fig/vr_{:03d}".format(k) + ".png")
+#
+# plt.close("all")
 
 
 ################################################################################################
 # Section III : Sampling with sequential design based on VOI
 ################################################################################################
 # static design: i.e. no adaptive selection, only one by one ish
-
+M = n1
 T = np.identity(M) * tau ** 2 # measurement error matrix
-VOI = np.zeros([M, 1])
-for j in range(M):
+voi = np.zeros([M, 1])
+for j in range(n2):
     F = np.zeros([M, n])
     for i in range(M):
         tempM = np.zeros([n1, n2])
         tempM[i, j] = True
         F[i, :] = np.ravel(tempM)
 
-    mu_w = np.sum(mu_prior)
-    Cmatrix = np.dot(F, np.dot(Sigma, F.T)) + T
-    Rj = np.dot(Sigma, np.dot(F.T, np.linalg.solve(Cmatrix, np.dot(F, Sigma))))
-    r_wj = np.sqrt(np.sum(Rj))
+    pov = PoV(mu_prior, Sigma, T, F)
+    pv = PV(mu_prior)
+    voi[j]= VOI(pov, pv)
 
-    PoV = mu_w * norm.cdf(mu_w / r_wj) + r_wj * norm.pdf(mu_w / r_wj)
-    PV = max(0, np.sum(mu_prior))
 
-    # print("PoV is ", PoV)
-    VOI[j] = PoV - PV
-    # print("PV is ", PV)
-    # print("VOI is ", VOI)
-
-plt.plot(VOI, 'k*')
+plt.figure()
+plt.plot(voi, 'k*')
 plt.title("VOI of 25 designs")
 plt.show()
-plt.grid()
 plt.savefig("fig/voi.png")
 
+
+################################################################################################
+# Section III : Sampling with sequential design based on VOI
+################################################################################################
+# sequential design based on maximum VOI until lower than Price
+
+Price = .5
+# VOI_sampling(mu_prior, Sigma_prior, tau, M, n, n1, n2)
+
+
+T = np.identity(M) * tau ** 2  # T matrix for the measurement error
+
+Max_steps = 200
+# voi = np.zeros([No_steps, n2])
+j_selected = []
+TRIAL = 100
+
+for kk in range(TRIAL):
+    j_next = 0
+    no_step = 0
+    mu_posterior = mu_prior
+    Sigma_posterior = Sigma
+    
+    while no_step <= Max_steps and j_next != -1:
+        j_next, voi_temp = VOI_sampling(Price, mu_posterior, Sigma_posterior, tau, M, n, n1, n2)
+        # voi[k, :] = voi_temp.T
+        print("j next is ", j_next)
+        if j_next == -1:
+            print("VOI is smaller than the price, not worthwhile anymore")
+            break
+        j_selected.append(j_next)
+        F = np.zeros([M, n])
+        for i in range(M):
+            tempM = np.zeros([n1, n2])
+            tempM[i, j_next] = True
+            F[i, :] = np.ravel(tempM)
+    
+        y_sampled = np.dot(F, mu_posterior) + tau * np.random.randn(M).reshape(-1, 1)
+        mu_posterior, Sigma_posterior = GRF2D(Sigma_posterior, F, T, y_sampled, mu_posterior)
+        no_step += 1
+        # print(["posterior variance{:03d}".format(k)])
+        # plotf(np.diag(Sigma_posterior).reshape(n1, n2), "std_voi_{:03d}".format(k))
 
 
 

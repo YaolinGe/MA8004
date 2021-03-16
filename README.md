@@ -8,4 +8,7 @@ MA8004 self-study course
 ## TODO
 - [ ] Maybe it can be converted to a jupyter notebook, more illustrative
 
-
+- [ ] Make variation for different parameters, to investigate the variation
+- [ ] Make three design strategies
+- [ ] total, partial, sum over average
+- [ ] try to simulate Trygve's data, make it in 3D
