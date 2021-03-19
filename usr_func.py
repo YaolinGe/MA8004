@@ -104,6 +104,7 @@ def MVR_sampling(mu_prior, Sigma_prior, tau, M, n1, n2, n):
     '''
     T = np.identity(M) * tau ** 2  # T matrix for the measurement error
     vr = np.zeros([M, 1])
+    varj = []
     for j in range(n2):
         F = np.zeros([M, n])
         for i in range(M):
@@ -114,6 +115,10 @@ def MVR_sampling(mu_prior, Sigma_prior, tau, M, n1, n2, n):
         y_sampled = np.dot(F, mu_prior) + tau * np.random.randn(M).reshape(-1, 1)
         mu_posterior, Sigma_posterior = GRF2D(Sigma_prior, F, T, y_sampled, mu_prior)
         vr[j] = np.mean(np.diag(Sigma_posterior))
+        varj.append(np.sum(np.diag(Sigma_posterior)))
+    plt.figure()
+    plt.plot(np.array(varj))
+    plt.show()
     mvr_ind = np.argmin(vr)
     return mvr_ind, vr
 
@@ -178,7 +183,7 @@ def VOI_sampling(Price, mu_prior, Sigma_prior, tau, M, n, n1, n2):
     if np.max(voi) >= Price:
         voi_ind = np.argmax(voi)
     else:
-        voi_ind = -1
+        voi_ind = -1 # voi is smaller than the price, not worthwhile anymore
     return voi_ind, voi
 
 
