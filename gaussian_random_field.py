@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from random import sample
 
-from skgstat import Variogram
+# from skgstat import Variogram
 np.random.seed(20210309)
 # np.random.seed(8004)
 # np.random.seed(20210309)
@@ -22,11 +22,15 @@ def Matern_cov(sigma, eta, t):
 # def
 def plotf(Y, string):
     plt.figure(figsize=(5,5))
+    fig = plt.gcf()
     plt.imshow(Y)
     plt.title(string)
+    plt.xlabel("s1")
+    plt.ylabel("s2")
     plt.colorbar(fraction=0.045, pad=0.04)
     plt.gca().invert_yaxis()
     plt.show()
+    return fig
 
 def design_matrix(sites1v, sites2v):
     '''
@@ -58,6 +62,8 @@ def sampling_design(n, M):
         F[i, ind[i]] = True
     return F, ind
 
+# def center_sampling_design(n, n1, n2, M):
+
 
 # Setup the grid
 n1 = 25 # number of grid points along east direction
@@ -78,7 +84,11 @@ sites2v = sites2m.flatten().reshape(-1, 1)
 
 # plt.figure(figsize=(5, 5))
 # plt.plot(sites1v, sites2v, 'k.')
+# plt.xlabel("s1")
+# plt.ylabel("s2")
+# plt.title("grid decomposition")
 # plt.show()
+
 
 # Compute the distance matrix
 ddE = np.abs(sites1v * np.ones([1, n]) - np.ones([n, 1]) * sites1v.T)
@@ -114,10 +124,15 @@ L = np.linalg.cholesky(Sigma)  # lower t    riangle matrix
 x = np.dot(L, np.random.randn(n).reshape(-1, 1))
 H = design_matrix(sites1v, sites2v) # different notation for the project
 mu_prior = mu(H, BETA_TRUE).reshape(n, 1)
-plotf(np.copy(mu_prior).reshape(n1, n2), "prior mean")
-mu_real = mu_prior + x  # add covariance
-plotf(np.copy(mu_real).reshape(n1, n2), "realisation of grf")
+fig = plotf(np.copy(mu_prior).reshape(n1, n2), "True mean of the field trend")
+fig.savefig("fig_presentation/True_mean.pdf")
 
+mu_real = mu_prior + x  # add covariance
+fig = plotf(np.copy(mu_real).reshape(n1, n2), "Realisation of the random field")
+fig.savefig("fig_presentation/Realisation.pdf")
+
+
+#%%
 # sampling from realisations
 M = 200
 F, ind = sampling_design(n, M)
@@ -125,18 +140,48 @@ G = np.dot(F, H)
 y_sampled = np.dot(F, mu_real) + tau * np.random.randn(M).reshape(-1, 1)
 x_ind, y_ind = np.unravel_index(ind, (n1, n2))
 
-# print(ind)
-# print(x_ind)
-# print(y_ind)
 x_ind = sites1[x_ind]
 y_ind = sites2[y_ind]
 
-plt.figure()
-plt.scatter(x_ind, y_ind, 100 * abs(y_sampled), facecolors='none', edgecolors='k')
+plt.figure(figsize=(5, 5))
+plt.scatter(x_ind, y_ind, 10 * (y_sampled - np.amin(y_sampled)), facecolors='none', edgecolors='k')
+plt.xlabel("s1")
+plt.ylabel("s2")
 # y_sampled times 10 for scaling in the plot
 # abs() added here to make the scatter plot work properly
-plt.title("random sample, circle size indicates true mean value")
+plt.title("Random observation design")
+plt.savefig("fig_presentation/Random_design.pdf")
 plt.show()
+
+
+# # sampling based on center design
+# Mc = n1 * n2
+# Fc = np.zeros([Mc, n])
+# for i in range(n1):
+#     temp = np.zeros([n1, n2])
+#     temp[i, 12] = True
+#     Fc[i, :] = np.ravel(temp)
+#
+# for j in range(n2):
+#     # if j == 12:
+#     #     continue
+#     temp = np.zeros([n1, n2])
+#     temp[12, j] = True
+#     Fc[j+n1, :] = np.ravel(temp)
+#
+# Gc = np.dot(Fc, H)
+# y_sampled_c = np.dot(Fc, mu_real) + tau * np.random.randn(Mc).reshape(-1, 1)
+#
+# plt.figure(figsize=(5, 5))
+# plt.scatter(10 * (y_sampled_c - np.amin(y_sampled_c)), facecolors='none', edgecolors='k')
+# plt.xlabel("s1")
+# plt.ylabel("s2")
+# # y_sampled times 10 for scaling in the plot
+# # abs() added here to make the scatter plot work properly
+# plt.title("Random observation design")
+# plt.savefig("fig_presentation/Center_design.pdf")
+# plt.show()
+
 #%%
 ##############################################
 #%% Compute the variogram
